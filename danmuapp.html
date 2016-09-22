@@ -4,17 +4,26 @@
 	<title>弹幕墙</title>
 	<meta name="author" content="Mr.大洋芋">
 	<meta charset="UTF-8">
-	<script src="http://libs.baidu.com/jquery/1.10.2/jquery.min.js">
-	</script>
-
+	
 	<style>
 	/* 弹幕墙大小的设置 */
-	.dm_screen{
+	.danmu .dm_screen{
 		border: solid 1px #ddd;
 	}
-	.dm_screen .dm_mask{
-		width: 100%;
-		height: 300px;
+
+	.danmu .dm_screen .dm_mask{
+		width:100%;
+		height: 380px;
+	}
+	/* 对要显示的弹幕的字体/颜色/位置进行设置,设置absolute使之后弹幕动画效果可以实现 */
+	.danmu .dm_screen .dm_show div{
+		font-size:22px;
+		line-height: 36px;
+		font-weight: 500;
+		color:#fff;
+		position: absolute;
+		left: 0;
+		top: 0;
 	}
 	/* 弹幕输入框和发射按钮、清屏等按钮的设置 */
 	.s_con p{
@@ -42,6 +51,8 @@
 	</style>
 </head>
 <body>
+	<p id='demo'>11</p>
+	
 	<div class='danmu'>
 		<div class="dm_screen">
 			<div class="dm_mask"></div>
@@ -61,7 +72,121 @@
 			</div>
 			
 		</div>
+
 	</div>
-	
+	<p id='demo1'></p>
+	<p id='demo2'></p>
+	<script src = "https://cdn.wilddog.com/sdk/js/2.0.0/wilddog-auth.js"></script>
+	<script src = "https://cdn.wilddog.com/sdk/js/2.0.0/wilddog-sync.js"></script>
+    <script src="https://cdn.wilddog.com/js/vendor/jquery-1.11.2.min.js"></script>
+	<script>
+	$(document).ready(function(){
+		/*$(".s_sub").click(function(){
+			var text=$(".s_txt").val();
+			$("#demo").html(text);
+		});*/
+		
+		/*创建wilddog实例*/
+		// 初始化
+		var config = {
+		  authDomain: "danmu0571.wilddog.com",
+		  syncURL: "https://danmu0571.wilddogio.com"
+		};
+		wilddog.initializeApp(config);
+		var ref = wilddog.sync().ref();
+		ref.child("Jor4").set({
+	    "name": "Jone",
+	    "age": 23
+		});
+		
+		var arr=[];
+		//点击发射按钮,获取输入框的数据,把数据提交到云端message
+		$(".s_sub").click(function(){
+			var text=$(".s_txt").val();//获取输入框数据
+			$("#demo").html(text);
+			ref.child('message').push(text);//把text写入到message节点
+			$(".s_txt").val("");
+		});
+		//响应按钮点击事件
+		$(".s_txt").keypress(function(event){
+			if(event.keyCode=="13"){//判断是否按了enter键
+				$(".s_sub").trigger("click");//触发s_sub元素上的click事件
+			}
+		});
+
+		//响应按键消除事件
+		$(".s_del").click(function(){
+			ref.remove();
+			arr=[];
+			$('.dm_show').empty();//移除dm_show中的所有内容
+		});
+		//监听云端数据的变化,有新增数据时,显示新增的数据
+		ref.child('message').on('child_added',function(snapshot){
+			var text=snapshot.val();//获取新增数据
+			arr.push(text);//把新增数据添加到arr数组中
+			var textObj=$("<div class=\"dm_message\"></div>")//选取textObj元素
+			textObj.text(text);//对textObj设置元素的内容
+			$(".dm_show").append(textObj);//在dm_show之后插入textObj,使新增的数据可以马上显示在屏幕里
+			moveObj(textObj);//滚动显示新增的数据
+		});
+		
+		ref.on("child_removed",function(){
+			arr=[];
+			$(".dm_show".empty)//获取清屏事件之后,对dm_show进行清空
+		})
+
+		//滚动/逐行显示
+		var topMin = $('.dm_mask').offset().top;//显示框距离顶部距离
+		
+		var topMax=topMin+$(".dm_mask").height();//显示框底部距离顶部距离
+		
+		var _top=topMin;//每个滚动纤细距离顶部距离
+		
+		var moveObj=function(obj){
+			
+			var _left = $('.dm_mask').width()-obj.width();
+			$('#demo1').html(_left);
+			_top = _top + 50;
+			if (_top > (topMax - 50)) {
+	      		_top = topMin;
+	    	}
+	    	/*显示的弹幕的CSS样式*/
+			obj.css({
+				'left':_left,
+				'top':_top,
+				'color':getRandomColor()
+			});
+			//设置动画的时间
+			var time=20000+10000*Math.random();	
+			/*注意设置弹幕的position属性,设置animate属性,使弹幕在屏幕上从右到左滑动*/
+			obj.animate({
+				left:"-"+_left+"px"},time,function(){
+					obj.remove();
+				});
+		}
+		
+		
+		
+		//获取随机颜色
+		var getRandomColor=function(){
+			return '#'+(function(h){
+				return new Array(7-h.length).join("0")+h
+			})((Math.random()*0x1000000<<0).toString(16))
+		}
+
+		//每3秒选取一条消息播放
+		var getAndRun=function(){
+			if(arr.length>0){
+				var n=Math.floor(Math.random()*arr.length+1)-1;
+				var textObj=$("<div>"+arr[n]+"</div>");
+				$(".dm_show").append(textObj);
+				moveObj(textObj);
+			}
+			setTimeout(getAndRun,3000);
+		}
+		jQuery.fx.interval = 50;
+		getAndRun();
+	});
+	</script>
 </body>
 </html>
